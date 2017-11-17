@@ -1,0 +1,23 @@
+body {
+	overflow-x : hidden;
+	overflow-y : hidden;
+}
+
+.listHolder {
+	padding : 0px 10px;
+	border-right : 1px solid black;
+	height : 100%;
+}
+
+.listItem {
+	padding-bottom : 10px;
+}
+
+.infoText span{
+	padding-right: 35px;
+	font-size: 2em;
+}
+
+a {
+	cursor: pointer ;
+}
