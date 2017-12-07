@@ -1,16 +1,23 @@
 l = console.log
 XMAX = 1000
+
+MAX_MEASUREMENTS = 2000
+INTERVAL = 0.0105 // Time in ms between each measurement
+
 PROBEDIAM = 1.64*0.6	//dimensions of the probe in cm
 KROHNEDIAM = 5.5		//diameter of the krohne meter in cm
+
 let app = new Vue({
 	el: '#app',
 	data: {
 		listOfMeasurements : []
-		,graphInfo : {
-			filename 	: 'No file chosen',
-			duration 	: 'No file chosen',
-			measurements: 'No file chosen'
-		}
+        ,graphInfo : {
+            filename 	: 'No file chosen',
+            duration 	: '-',
+            measurements: '-',
+            usage: 0,
+            difference: 0,
+        }
 	},
 	
 	methods : {
@@ -25,25 +32,26 @@ let app = new Vue({
 })
 
 Vue.component('graphInfo', {
-	props : ['filename', 'duration', 'measurements']
-	,template: "<div class='infoText'>"+
-		"<span><b> Filename </b> : {{ filename }} </span>" + 
-		"<span><b> Duration </b> : {{ duration }} </span>" + 
-		"<span><b> Measurements</b> : {{ measurements }} </span>" + 
-		"</div>"
-	
+    props : ['filename', 'duration', 'measurements', 'usage', 'difference']
+    ,template: "<div class='infoText'>"+
+    "<span><b> Filename </b> : {{ filename }} </span>" +
+    "<span><b> Duration </b> : {{ duration }}s </span>" +
+    "<span><b> Measurements</b> : {{ measurements }} </span>" +
+    "<span><b> usage </b> : 1/{{ usage }} </span>" +
+    "<span><b> difference </b> : {{ difference.toFixed(2) }}% </span>" +
+    "</div>"
+
 })
 
 Vue.component('measurement', {
-	props : ['filename']
-	,template: '<div class="listItem"><a v-on:click="measurementClicked">{{ filename }}</a><br></div>'
-	,methods : {
-		measurementClicked : function(){
-			this.$emit('measurement-clicked', this.filename)
-		}
-	}
+    props : ['filename']
+    ,template: '<div class="listItem"><a v-on:click="measurementClicked">{{ filename }}</a><br></div>'
+    ,methods : {
+        measurementClicked : function(){
+            this.$emit('measurement-clicked', this.filename)
+        }
+    }
 })
-
 
 
 function loadMeasurement(filename){
@@ -57,32 +65,22 @@ function loadMeasurement(filename){
 
 function filterFile(file, filename){
 	l("Filtering file..")
+	/* ====== File to array ====== */
 	let lines = file.split("\n").slice(1, -1)
 	lines = _.map(lines, line => line.split(" "))
 	let duration = Math.round( (_.last(lines)[0] - _.first(lines)[0]) / 1000 )
 
-	let interval = Math.round(lines.length / XMAX)
-	
+    let usage = Math.ceil(lines.length / MAX_MEASUREMENTS)
+    let delta = INTERVAL * usage
 
-	app.graphInfo = {
-		filename,
-		duration,
-		measurements : lines.length
-	}
+    l('Using 1/'+usage+' of the measurements')
 
-
-    // let maxI = -Infinity
-    // let minI = Infinity
-    // let deltas = []
-    // for(i = 0; i < lines.length-1; i++){
-    //     let _i = lines[i+1][0] - lines[i][0]
-    //     maxI = _.max([_i, maxI])
-    //     minI = _.min([_i, minI])
-    //     deltas.push(_i)
-    // }
-    // let avgI = duration*1000 / lines.length
-    // l({maxI, minI, avgI})
-    // l(deltas.slice(0, 100))
+    app.graphInfo = {
+        filename,
+        duration,
+        measurements : lines.length,
+        usage
+    }
 
 	//General Setup
     let tubeDiameter = 5.5				//in cm
@@ -125,8 +123,8 @@ function filterFile(file, filename){
 
 	//Functions that build the values for both the outputted ADC values and the converted values in L/s for the Krohne measurer
 	let expensive = _.map(lines, 2)
-	expensive = _.filter(expensive, (e, i) => i % interval == 0)
-	expensiveMA = _.map(expensive, e => f_p1_mA(parseInt(e)))
+	expensive = _.filter(expensive, (e, i) => i % usage == 0)
+	let expensiveMA = _.map(expensive, e => f_p1_mA(parseInt(e)))
 	
    	let expensiveLs = 0
 	let expensiveMa = 0
@@ -136,7 +134,7 @@ function filterFile(file, filename){
 		if(maToVelocity(v) < 11) {
 			expensiveLs += 0
 		}else{
-			expensiveLs += maToLitersExpensive(v)*0.0105*interval		//interval is 10.5ms
+			expensiveLs += maToLitersExpensive(v)*delta		//interval is 10.5ms
 		}
 		expensiveMa += v
 		expensiveMaSeries.push(expensiveMa)
@@ -150,8 +148,8 @@ function filterFile(file, filename){
     // f_p2_flow = mA => 22.5 * mA -70 // cm/s
 	//Functions that build the values for both the outputted ADC values and the converted values in L/s for the Wenglor measurer
 	let cheap = _.map(lines, 3)
-	cheap = _.filter(cheap, (e, i) => i % interval == 0)
-	cheapMA = _.map(cheap, e => f_p2_mA(parseInt(e)))
+	cheap = _.filter(cheap, (e, i) => i % usage == 0)
+	let cheapMA = _.map(cheap, e => f_p2_mA(parseInt(e)))
 	
    	let cheapLs = 0
 	let cheapMa = 0
@@ -161,7 +159,7 @@ function filterFile(file, filename){
 		if(maToVelocity(v) < 11) {
 			cheapLs += 0
 		}else{
-			cheapLs += maToLitersCheap(v)*0.0105*interval		//interval is 10.5ms
+			cheapLs += maToLitersCheap(v)*delta		//interval is 10.5ms
 		}
 		cheapMa += v
 		cheapLsSeries.push(cheapLs)
@@ -170,11 +168,9 @@ function filterFile(file, filename){
 	
 	
 	//Calculations for the differences in measurements between the two measurers.
-	let diff = expensiveLs-cheapLs
-	let diffMa = expensiveMa-cheapMa
+
 	l("\n\n")
 	l("cheap Ls : expensive Ls ratio: " + cheapLs/expensiveLs)
-	l("\n\n")
 	l("cheap mA : expensive mA ratio: " + cheapMa/expensiveMa)
 	l("% diff mA" + (1-cheapMa/expensiveMa)*100 + "%")
 
@@ -188,51 +184,47 @@ function filterFile(file, filename){
 	l("avgExpen mA: " + expensiveMa/expensive.length)
     l("avgCheap mA: " + cheapMa/cheap.length)
 
-	let temp = _.map(lines, 4)
-	temp = _.filter(temp, (e, i) => i % interval == 0)
-	temp = _.map(temp, e => parseInt(e))
-	
+    app.graphInfo.difference = (1-cheapLs/expensiveLs)*100
+
 	let new_serie = [
 		{
-			"name"  : "ExpensiveMA"
+			"name"  : "Krohne mA"
 			,"data" : expensiveMA
 			,"color": "blue"
             ,"yAxis": 0
 		},
 		{
-			"name"  : "CheapMA"
+			"name"  : "Wenglor mA"
 			,"data" : cheapMA
 			,"color": "orange"
             ,"yAxis": 0
 		},
-		// {
-		// 	"name"  : "Temperature"
-		// 	,"data" : temp
-		// 	,"color": "red"
-         //    ,"yAxis": 0
-		// },
 		{
-			"name"  : "expensiveLsSeries"
+			"name"  : "Krohne Liters"
 			,"data" : expensiveLsSeries
-			,"color": "lightblue"
+			,"color": "blue"
 			,"yAxis": 1
+			,"dashStyle" : "LongDash"
 		},
         {
-            "name"  : "cheapLsSeries"
+            "name"  : "Wenglor Liters"
             ,"data" : cheapLsSeries
-            ,"color": "pink"
+            ,"color": "orange"
             ,"yAxis": 1
+            ,"dashStyle" : "LongDash"
+        },{
+            "name"  : "Krohne mA sum"
+            ,"data" : expensiveMaSeries
+            ,"color": "blue"
+            ,"yAxis": 2
+            ,"dashStyle" : "ShortDot"
         },
 		{
-			"name"  : "cheapMaSeries"
+			"name"  : "Wenglor mA sum"
             ,"data" : cheapMaSeries
-            ,"color": "red"
-            ,"yAxis": 1
-		},{
-			"name"  : "expensiveMaSeries"
-            ,"data" : expensiveMaSeries
-            ,"color": "yellow"
-            ,"yAxis": 1
+            ,"color": "orange"
+            ,"yAxis": 2
+            ,"dashStyle" : "ShortDot"
 		}
 	]
 	
@@ -256,7 +248,7 @@ let chart = Highcharts.chart('myChart',  {
 	},
 	xAxis: {
 		min: 0,
-		max: XMAX,
+		max: MAX_MEASUREMENTS,
 		labels: {
 			enabled: false
 		}
@@ -271,7 +263,14 @@ let chart = Highcharts.chart('myChart',  {
         min: 0,
 		minRange: 10,
         title : {
-            text : "Sum"
+            text : "Sum Liters"
+        },
+        opposite: true
+    },{
+        min: 0,
+        minRange: 10,
+        title : {
+            text : "Sum mA"
         },
         opposite: true
     }],
