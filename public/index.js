@@ -57,10 +57,10 @@ function filterFile(file, filename){
 	l("Filtering file..")
 	let lines = file.split("\n").slice(1, -1)
 	lines = _.map(lines, line => line.split(" "))
-	let duration = Math.round( (_.last(lines)[0] - lines[0][0]) / 1000 )
-	
+	let duration = Math.round( (_.last(lines)[0] - _.first(lines)[0]) / 1000 )
+
 	let interval = Math.round(lines.length / 2000)
-	// interval = 1
+	interval = 1
 
 	app.graphInfo = {
 		filename,
@@ -68,21 +68,43 @@ function filterFile(file, filename){
 		measurements : lines.length
 	}
 
+
+    // let maxI = -Infinity
+    // let minI = Infinity
+    // let deltas = []
+    // for(i = 0; i < lines.length-1; i++){
+    //     let _i = lines[i+1][0] - lines[i][0]
+    //     maxI = _.max([_i, maxI])
+    //     minI = _.min([_i, minI])
+    //     deltas.push(_i)
+    // }
+    // let avgI = duration*1000 / lines.length
+    // l({maxI, minI, avgI})
+    // l(deltas.slice(0, 100))
+
+
+    let tubeDiameter = 5.5
+	let tubeArea = Math.PI * (5.5/2) * (5.5/2)
+	l("diameter: " + tubeDiameter)
+    l("area: " + tubeArea)
+
+    let maToFlow = mA => 24.375 * mA - 87.5 // cm/s
+
+
 	let p1_4 = 532
 	let p1_20=2758
 	let p1_slope = 16/(p1_20-p1_4)
 	let p1_b = 4 - p1_4 * p1_slope
 
-	f_p1_mA = adc => adc * p1_slope + p1_b
+	let f_p1_mA = adc => adc * p1_slope + p1_b
 	l(f_p1_mA(p1_4))
     l(f_p1_mA(p1_20))
 
-	f_p1_flow = mA => 22.5 * mA -70 // cm/s
 
-	let expensiveBaseline = 507.25
+
 	let expensive = _.map(lines, 2)
 	expensive = _.filter(expensive, (e, i) => i % interval == 0)
-	expensive = _.map(expensive, e => f_p1_mA(parseInt(e)))
+	expensive = _.map(expensive, e => maToFlow(f_p1_mA(parseInt(e))))
 
 	let expensiveSum = 0
 	let expensiveSumSeries = []
@@ -98,14 +120,13 @@ function filterFile(file, filename){
     let p2_slope = 16/(p2_20-p2_4)
     let p2_b = 4 - p2_4 * p2_slope
 
-    f_p2_mA = adc => adc * p2_slope + p2_b
+    let f_p2_mA = adc => adc * p2_slope + p2_b
 
     // f_p2_flow = mA => 22.5 * mA -70 // cm/s
 
-	let cheapBaseline = 635.8
 	let cheap = _.map(lines, 3)
 	cheap = _.filter(cheap, (e, i) => i % interval == 0)
-	cheap = _.map(cheap, e => f_p2_mA(parseInt(e)))
+	cheap = _.map(cheap, e => maToFlow(f_p2_mA(parseInt(e))))
 
     let cheapSum = 0
     let cheapSumSeries = []
