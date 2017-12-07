@@ -16,6 +16,8 @@ app.use('/', express.static(path.join(__dirname, 'public')))
 
 app.get('/getListOfMeasurements', (req, res, next) => {
 	fs.readdir('measurements', (err, files) => {
+		l("hffhhjtcj")
+		l(files)
 		res.send(JSON.stringify(files))
 	})
 })
