@@ -5,7 +5,7 @@ MAX_MEASUREMENTS = 2000
 INTERVAL = 0.0105 // Time in ms between each measurement
 
 PROBEDIAM = 1.64*0.6	//dimensions of the probe in cm
-KROHNEDIAM = 5.5		//diameter of the krohne meter in cm
+KROHNEDIAM = 5		//diameter of the krohne meter in cm
 
 let app = new Vue({
 	el: '#app',
@@ -19,11 +19,11 @@ let app = new Vue({
             difference: 0,
         }
 	},
-	
+
 	methods : {
 		loadMeasurement
 	},
-	
+
 	mounted : function () {
 		this.$http.get('getListOfMeasurements').then(response => {
 			this.listOfMeasurements = response.data
@@ -84,11 +84,11 @@ function filterFile(file, filename){
 
 	//General Setup
     let tubeDiameter = 5.5				//in cm
-	let tubeArea = Math.PI * (5.5/2) * (5.5/2)
+	let tubeArea = Math.PI * (tubeDiameter/2) * (tubeDiameter/2)
 	l("diameter: " + tubeDiameter)
     l("area: " + tubeArea)
-	
-	
+
+
 	//Setup for ADC values -> mA on pin 1 (Expensive)
 	let p1_4 = 532
 	let p1_20=2758
@@ -96,7 +96,7 @@ function filterFile(file, filename){
 	let p1_b = 4 - p1_4 * p1_slope
 
 	let f_p1_mA = adc => adc * p1_slope + p1_b
-	
+
 	//Setup for ADC values -> mA on pin 2 (Cheap)
 	let p2_4 = 635
     let p2_20=2875
@@ -105,19 +105,19 @@ function filterFile(file, filename){
 
     let f_p2_mA = adc => adc * p2_slope + p2_b
 
-	
-	
+
+
 	//Conversion function for mA to velocity, is the same for both types of meters
     let maToVelocity = mA => 24.375 * mA - 87.5 // cm/s
-	
+
 	//Conversion functions from velocity to L/s, first one for cheap, second for expensive
 	let velocityToLsCheap = cms => (((1/4 * Math.PI * Math.pow(tubeDiameter,2)) - PROBEDIAM)* cms)/1000	//L/s
 	let velocityToLsExpensive = cms => (1/4 * Math.PI * Math.pow((KROHNEDIAM),2) * cms)/1000	//L/s
-	
+
 	//Conversion function from velocity to L/s for both cheap and expensive
 	let maToLitersCheap = mA => velocityToLsCheap(maToVelocity(mA))
 	let maToLitersExpensive = mA => velocityToLsExpensive(maToVelocity(mA))
-	
+
 
 
 
@@ -125,7 +125,7 @@ function filterFile(file, filename){
 	let expensive = _.map(lines, 2)
 	expensive = _.filter(expensive, (e, i) => i % usage == 0)
 	let expensiveMA = _.map(expensive, e => f_p1_mA(parseInt(e)))
-	
+
    	let expensiveLs = 0
 	let expensiveMa = 0
 	let expensiveMaSeries = []
@@ -139,18 +139,18 @@ function filterFile(file, filename){
 		expensiveMa += v
 		expensiveMaSeries.push(expensiveMa)
 		expensiveLsSeries.push(expensiveLs)
-		
+
 	})
 
 
 
-    
+
     // f_p2_flow = mA => 22.5 * mA -70 // cm/s
 	//Functions that build the values for both the outputted ADC values and the converted values in L/s for the Wenglor measurer
 	let cheap = _.map(lines, 3)
 	cheap = _.filter(cheap, (e, i) => i % usage == 0)
 	let cheapMA = _.map(cheap, e => f_p2_mA(parseInt(e)))
-	
+
    	let cheapLs = 0
 	let cheapMa = 0
 	let cheapMaSeries = []
@@ -165,8 +165,8 @@ function filterFile(file, filename){
 		cheapLsSeries.push(cheapLs)
 		cheapMaSeries.push(cheapMa)
 	})
-	
-	
+
+
 	//Calculations for the differences in measurements between the two measurers.
 
 	l("\n\n")
@@ -227,15 +227,15 @@ function filterFile(file, filename){
             ,"dashStyle" : "ShortDot"
 		}
 	]
-	
-	
+
+
 	for (var i = chart.series.length-1; i>=0; i--) {
 		chart.series[i].remove();
 	}
 	for (var y = new_serie.length-1; y >= 0; y--) {
 		chart.addSeries(new_serie[y]);
 	}
-	
+
 }
 
 let chart = Highcharts.chart('myChart',  {
