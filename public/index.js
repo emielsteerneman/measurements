@@ -38,7 +38,7 @@ Vue.component('graphInfo', {
     "<span><b> Duration </b> : {{ duration }}s </span>" +
     "<span><b> Measurements</b> : {{ measurements }} </span>" +
     "<span><b> usage </b> : 1/{{ usage }} </span>" +
-    "<span><b> difference </b> : {{ difference.toFixed(2) }}% </span>" +
+    "<span><b> proportion </b> : {{ difference.toFixed(2) }} </span>" +
     "</div>"
 
 })
@@ -107,12 +107,13 @@ function filterFile(file, filename){
 
 
 
+
 	//Conversion function for mA to velocity, is the same for both types of meters
     let maToVelocity = mA => 24.375 * mA - 87.5 // cm/s
 
 	//Conversion functions from velocity to L/s, first one for cheap, second for expensive
-	let velocityToLsCheap = cms => (((1/4 * Math.PI * Math.pow(tubeDiameter,2)) - PROBEDIAM)* cms)/1000	//L/s
-	let velocityToLsExpensive = cms => (1/4 * Math.PI * Math.pow((KROHNEDIAM),2) * cms)/1000	//L/s
+	let velocityToLsCheap =     cms => ((1/4 * Math.PI * Math.pow(tubeDiameter,2) - PROBEDIAM) * cms)/1000	//L/s
+	let velocityToLsExpensive = cms => ( 1/4 * Math.PI * Math.pow((KROHNEDIAM),2)              * cms)/1000	//L/s
 
 	//Conversion function from velocity to L/s for both cheap and expensive
 	let maToLitersCheap = mA => velocityToLsCheap(maToVelocity(mA))
@@ -172,9 +173,9 @@ function filterFile(file, filename){
 	l("\n\n")
 	l("cheap Ls : expensive Ls ratio: " + cheapLs/expensiveLs)
 	l("cheap mA : expensive mA ratio: " + cheapMa/expensiveMa)
-	l("% diff mA" + (1-cheapMa/expensiveMa)*100 + "%")
+	l("% diff mA" + (cheapMa/expensiveMa))
 
-	l("% diff Ls" + (1-cheapLs/expensiveLs)*100 + "%")
+	l("% diff Ls" + (cheapLs/expensiveLs))
     l("sumExpen Ls: " + expensiveLs)
     l("sumCheap Ls: " + cheapLs)
 	l("sumExpen mA: " + expensiveMa)
@@ -184,7 +185,7 @@ function filterFile(file, filename){
 	l("avgExpen mA: " + expensiveMa/expensive.length)
     l("avgCheap mA: " + cheapMa/cheap.length)
 
-    app.graphInfo.difference = (1-cheapLs/expensiveLs)*100
+    app.graphInfo.difference = (cheapLs/expensiveLs)
 
 	let new_serie = [
 		{
