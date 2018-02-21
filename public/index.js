@@ -213,7 +213,7 @@ function filterFile(file, filename){
             ,"color": "orange"
             ,"yAxis": 1
             ,"dashStyle" : "LongDash"
-        },{
+        }/*,{
             "name"  : "Krohne mA sum"
             ,"data" : expensiveMaSeries
             ,"color": "blue"
@@ -226,7 +226,7 @@ function filterFile(file, filename){
             ,"color": "orange"
             ,"yAxis": 2
             ,"dashStyle" : "ShortDot"
-		}
+		}*/
 	]
 
 
@@ -255,8 +255,8 @@ let chart = Highcharts.chart('myChart',  {
 		}
 	},
 	yAxis: [{
-		min: 0,
-		max: 24,
+		min: 2,
+		max: 10,
 		title : {
 			text : "mA"
 		}
